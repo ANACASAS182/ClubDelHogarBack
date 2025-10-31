@@ -1,6 +1,23 @@
+# --- Archivos de configuración sensibles ---
+appsettings.Development.json
+appsettings.Production.json
 appsettings.json
-# Carpetas de compilación
+
+# --- Carpetas de compilación ---
 bin/
 obj/
-# Archivos de configuración de VS Code
+
+# --- Archivos de configuración de VS Code ---
 .vs/
+.vscode/
+
+# --- Archivos temporales ---
+*.user
+*.suo
+*.cache
+*.log
+*.tmp
+*.swp
+*.bak
+.DS_Store
+Thumbs.db
