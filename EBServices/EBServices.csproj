@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="7.1.2" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.1.2" />
+    <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.0.2" />
+	 <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EBDTOs\EBDTOs.csproj" />
+    <ProjectReference Include="..\EBEmail\EBEmail.csproj" />
+    <ProjectReference Include="..\EBEntities\EBEntities.csproj" />
+    <ProjectReference Include="..\EBRepositories.Interfaces\EBRepositories.Interfaces.csproj" />
+    <ProjectReference Include="..\EBRepositories\EBRepositories.csproj" />
+    <ProjectReference Include="..\EBServices.Interfaces\EBServices.Interfaces.csproj" />
+  </ItemGroup>
+
+</Project>

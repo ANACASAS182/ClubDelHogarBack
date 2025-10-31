@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cupon Promocional</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            font-family: Arial, sans-serif;
+            background-color: #1a1f2b; /* Azul oscuro desaturado */
+            color: white;
+            text-align: center;
+        }
+
+        hr {
+            border: 1px solid white;
+            margin: 30px 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            width: 80px;
+            margin-top: 20px;
+        }
+
+        .qr {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+        }
+
+        .fecha {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        .promo-nombre {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .promo-desc {
+            font-size: 1em;
+            margin-top: 10px;
+        }
+
+        .cupon-info {
+            margin-top: 20px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="empresa-nombre">NOMBRE DE LA EMPRESA</div>
+        <div class="promo-nombre">NOMBRE DE LA PROMOCIÓN</div>
+        <div class="promo-desc">DESCRIPCIÓN DE LA PROMOCIÓN</div>
+
+        <hr />
+
+        <div class="cupon-info">Haz válida la promoción presentando el siguiente cupón</div>
+
+        <img class="qr" src="data:image/png;base64,{{QR_BASE64}}" alt="QR Code" />
+
+        <div class="fecha">Promoción vigente hasta: {{FECHA_VIGENCIA}}</div>
+
+        <hr />
+
+        <img class="logo" src="data:image/png;base64,{{LOGO_BASE64}}" alt="Logo de la empresa" />
+    </div>
+</body>
+</html>
