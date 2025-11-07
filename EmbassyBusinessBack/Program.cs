@@ -65,6 +65,7 @@ builder.Services.AddCors(options =>
              origin.StartsWith("http://localhost:4200") ||
              origin.StartsWith("http://localhost:54697") ||
              origin.Contains("embassyen.com") ||
+             origin.Contains("elclubdelhogar.com.mx") ||
              origin.Contains("bithub.com.mx")))
         .AllowAnyHeader()
         .AllowAnyMethod()
