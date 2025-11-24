@@ -4,8 +4,12 @@ using EBRepositories;
 using EBRepositories.Interfaces;
 using EBServices;
 using EBServices.Interfaces;
+using EBServices.Interfaces.Notifications;
+using EBServices.Notifications;
 using EmbassyBusinessBack.Controllers;
+using EmbassyBusinessBack.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.StaticFiles;
@@ -13,10 +17,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using System.Reflection;
-using System.Text;
 using System.Runtime.InteropServices;
-using EBServices.Interfaces.Notifications;
-using EBServices.Notifications;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -96,6 +98,16 @@ builder.Services.AddAuthentication(options =>
 
 // Memoria caché si la usan algunos controladores
 builder.Services.AddMemoryCache();
+
+builder.Services.AddScoped<TwilioSmsService>();
+
+
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAssertion(_ => true) // 👈 Permite TODO si no hay [Authorize]
+        .Build();
+});
 
 var app = builder.Build();
 

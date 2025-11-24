@@ -46,35 +46,36 @@ namespace EmbassyBusinessBack.Controllers
             return BadRequest(GenericResponseDTO<string>.Fail(_empresaService.LastError));
         }
 
+        [AllowAnonymous]
         [HttpGet("GetAllEmpresasByUsuarioId")]
         [SwaggerResponse(200, "Objeto de respuesta", typeof(List<EmpresaDTO>))]
-        public async Task<IActionResult> GetAllEmpresasByUsuarioId(int usuarioId)
+        public async Task<IActionResult> GetAllEmpresasByUsuarioId([FromQuery] int? usuarioId)
         {
+            int uid = usuarioId.GetValueOrDefault(15319);
+
             string q = $@"
-    SELECT 
-        e.ID                AS id,
-        e.RFC               AS rfc,
-        e.RazonSocial       AS razonSocial,
-        e.NombreComercial   AS nombreComercial,
-        e.Grupo             AS GrupoID,
-        CASE 
-            WHEN ISNULL(e.LogotipoBase64,'') = '' THEN ''
-            -- si ya viene como data:... déjalo tal cual
-            WHEN e.LogotipoBase64 LIKE 'data:%' THEN e.LogotipoBase64
-            -- si viene crudo, límpialo y antepone el prefijo
-            ELSE 'data:image/png;base64,' + 
-                 REPLACE(REPLACE(REPLACE(e.LogotipoBase64, CHAR(13), ''), CHAR(10), ''), ' ', '')
-        END AS logotipoBase64
-    FROM Empresa e
-    LEFT JOIN Usuario u         ON u.ID = {usuarioId}
-    LEFT JOIN UsuarioEmpresa ue ON ue.UsuarioID = u.ID AND ue.EmpresaID = e.ID
-    WHERE (ISNULL(u.GrupoID,0) > 0 AND e.Grupo = u.GrupoID)
-       OR (ue.EmpresaID IS NOT NULL);";
+SELECT 
+    e.ID                AS id,
+    e.RFC               AS rfc,
+    e.RazonSocial       AS razonSocial,
+    e.NombreComercial   AS nombreComercial,
+    e.Grupo             AS GrupoID,
+    CASE 
+        WHEN ISNULL(e.LogotipoBase64,'') = '' THEN ''
+        WHEN e.LogotipoBase64 LIKE 'data:%' THEN e.LogotipoBase64
+        ELSE 'data:image/png;base64,' + 
+             REPLACE(REPLACE(REPLACE(e.LogotipoBase64, CHAR(13), ''), CHAR(10), ''), ' ', '')
+    END AS logotipoBase64
+FROM Empresa e
+LEFT JOIN Usuario u         ON u.ID = {uid}
+LEFT JOIN UsuarioEmpresa ue ON ue.UsuarioID = u.ID AND ue.EmpresaID = e.ID
+WHERE (ISNULL(u.GrupoID,0) > 0 AND e.Grupo = u.GrupoID)
+   OR (ue.EmpresaID IS NOT NULL);";
 
             var empresasUsuario = DataAccess.fromQueryListOf<EmpresaDTO>(q);
+
             return Ok(GenericResponseDTO<List<EmpresaDTO>>.Ok(empresasUsuario, "Consulta exitosa"));
         }
-
 
 
         [HttpGet("GetEmpresasPaginated")]

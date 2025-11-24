@@ -12,6 +12,7 @@ using Swashbuckle.AspNetCore.Annotations;
 using System.ComponentModel;
 using System.Data;
 using System.Security.Claims;
+using Dapper;
 
 namespace EmbassyBusinessBack.Controllers
 {
@@ -25,14 +26,23 @@ namespace EmbassyBusinessBack.Controllers
 
         private readonly IPasswordRecoveryService _passwordRecoveryService;
 
+        private readonly IConfiguration _config;
+
         public UsuarioController(
         IUsuarioService usuarioService,
-        IPasswordRecoveryService passwordRecoveryService)               // 👈 nuevo
+        IPasswordRecoveryService passwordRecoveryService,
+        IConfiguration config)               // 👈 nuevo
         {
             _usuarioService = usuarioService;
-            _passwordRecoveryService = passwordRecoveryService;             // 👈 nuevo
+            _passwordRecoveryService = passwordRecoveryService;
+            _config = config;
         }
 
+        private SqlConnection Conn()
+        {
+            // usa la cadena "SQLConexion" de tu appsettings.json
+            return new SqlConnection(_config.GetConnectionString("SQLConexion"));
+        }
 
         //Angel Romero
         //En vez de allowAnonymous seria mejor hacer un personalizado, para que pida un api key. Por falta de tiempo se deja pendiente.
@@ -276,48 +286,111 @@ namespace EmbassyBusinessBack.Controllers
 
         }
 
+        [AllowAnonymous]
         [HttpPost("postOnboardingA")]
-        [Authorize]
-        public IActionResult PostOnboardingA([FromBody] UsuarioDTO dto)
+        public async Task<IActionResult> PostOnboardingA([FromBody] UsuarioDTO dto)
         {
-            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioID))
-                return Unauthorized(GenericResponseDTO<string>.Fail("No autorizado"));
+            if (dto == null)
+                return BadRequest(GenericResponseDTO<string>.Fail("Datos inválidos"));
 
-            var nombres = (dto.Nombres ?? "").Replace("'", "''");
-            var apellidos = (dto.Apellidos ?? "").Replace("'", "''");
-            var celular = (dto.Celular ?? "").Replace("'", "''");
+            // 1) Determinar el usuario por Id o por celular
+            long? usuarioId = dto.id;
 
-            DataAccess.performQuery($@"
-        UPDATE Usuario
-        SET Nombres   = '{nombres}',
-            Apellidos = '{apellidos}',
-            Celular   = '{celular}'
-        WHERE ID = {usuarioID}");
-            return Ok(true);
+            using var con = Conn();
+            await con.OpenAsync();
+
+            if (usuarioId == null && !string.IsNullOrWhiteSpace(dto.Celular))
+            {
+                var tel = dto.Celular
+                    .Replace(" ", "")
+                    .Replace("-", "")
+                    .Replace("(", "")
+                    .Replace(")", "")
+                    .Replace("+", "");
+
+                const string sqlBusca = @"
+SELECT TOP 1 ID
+FROM dbo.Usuario
+WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(Celular,' ',''),'-',''),'(',''),')',''),'+','') = @tel
+ORDER BY ID DESC;";
+
+                usuarioId = await con.ExecuteScalarAsync<long?>(sqlBusca, new { tel });
+            }
+
+            if (usuarioId == null)
+                return NotFound(GenericResponseDTO<string>.Fail("Usuario no encontrado"));
+
+            // 2) Actualizar datos básicos
+            const string sqlUpdate = @"
+UPDATE dbo.Usuario
+SET Nombres   = @nombres,
+    Apellidos = @apellidos,
+    Celular   = @celular
+WHERE ID      = @id;";
+
+            await con.ExecuteAsync(sqlUpdate, new
+            {
+                id = usuarioId.Value,
+                nombres = dto.Nombres ?? string.Empty,
+                apellidos = dto.Apellidos ?? string.Empty,
+                celular = dto.Celular ?? string.Empty
+            });
+
+            return Ok(GenericResponseDTO<bool>.Ok(true, "Datos guardados"));
         }
 
+        [AllowAnonymous]
         [HttpPost("postOnboardingB")]
-        [Authorize]
-        public IActionResult PostOnboardingB([FromBody] UsuarioDTO dto)
+        public async Task<IActionResult> PostOnboardingB([FromBody] UsuarioDTO dto)
         {
-            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioID))
-                return Unauthorized(GenericResponseDTO<string>.Fail("No autorizado"));
+            if (dto == null)
+                return BadRequest(GenericResponseDTO<string>.Fail("Datos inválidos"));
 
-            var ciudad = (dto.Ciudad ?? "").Replace("'", "''");
-            var estadoTexto = (dto.EstadoTexto ?? "").Replace("'", "''");
-            var estadoIdSql = dto.CatalogoEstadoID.HasValue ? dto.CatalogoEstadoID.Value.ToString() : "NULL";
+            long? usuarioId = dto.id;
 
-            DataAccess.performQuery($@"
-        UPDATE Usuario
-        SET CatalogoPaisId    = 151,
-            CatalogoEstadoId  = {estadoIdSql},
-            Ciudad            = '{ciudad}',
-            EstadoTexto       = '{estadoTexto}',
-            GrupoID           = 2,              -- valor fijo
-            mostrarOnboarding = 0
-        WHERE ID = {usuarioID}");
+            using var con = Conn();
+            await con.OpenAsync();
 
-            return Ok(true);
+            if (usuarioId == null && !string.IsNullOrWhiteSpace(dto.Celular))
+            {
+                var tel = dto.Celular
+                    .Replace(" ", "")
+                    .Replace("-", "")
+                    .Replace("(", "")
+                    .Replace(")", "")
+                    .Replace("+", "");
+
+                const string sqlBusca = @"
+SELECT TOP 1 ID
+FROM dbo.Usuario
+WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(Celular,' ',''),'-',''),'(',''),')',''),'+','') = @tel
+ORDER BY ID DESC;";
+
+                usuarioId = await con.ExecuteScalarAsync<long?>(sqlBusca, new { tel });
+            }
+
+            if (usuarioId == null)
+                return NotFound(GenericResponseDTO<string>.Fail("Usuario no encontrado"));
+
+            const string sqlUpdate = @"
+UPDATE dbo.Usuario
+SET CatalogoPaisId    = 151,
+    CatalogoEstadoId  = @estadoId,
+    Ciudad            = @ciudad,
+    EstadoTexto       = @estadoTexto,
+    GrupoID           = 2,
+    mostrarOnboarding = 0
+WHERE ID = @id;";
+
+            await con.ExecuteAsync(sqlUpdate, new
+            {
+                id = usuarioId.Value,
+                estadoId = dto.CatalogoEstadoID, // puede ir null
+                ciudad = dto.Ciudad ?? string.Empty,
+                estadoTexto = dto.EstadoTexto ?? string.Empty
+            });
+
+            return Ok(GenericResponseDTO<bool>.Ok(true, "Datos guardados"));
         }
 
 
@@ -404,30 +477,75 @@ namespace EmbassyBusinessBack.Controllers
             return Ok(c);
         }
 
+        [AllowAnonymous]
         [HttpGet("GetUsuarioLogeado")]
-        [SwaggerResponse(200, "Objeto de respuesta", typeof(Usuario))]
-        public async Task<IActionResult> GetUsuarioLogeado()
+        public async Task<IActionResult> GetUsuarioLogeado([FromQuery] string? tel = null)
         {
-            if (!long.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var UsuarioID))
+            long? usuarioId = null;
+
+            // 1) Si viene teléfono, lo usamos primero
+            if (!string.IsNullOrWhiteSpace(tel))
             {
-                return BadRequest(GenericResponseDTO<string>.Fail("No se pudo obtener el ID de usuario"));
+                tel = tel.Replace(" ", "")
+                         .Replace("-", "")
+                         .Replace("(", "")
+                         .Replace(")", "")
+                         .Replace("+", "");
+
+                using var con = Conn();
+                await con.OpenAsync();
+
+                const string sql = @"
+SELECT TOP 1 ID
+FROM dbo.Usuario
+WHERE REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(Celular,' ',''),'-',''),'(',''),')',''),'+','') = @tel
+ORDER BY ID DESC;";
+
+                usuarioId = await con.ExecuteScalarAsync<long?>(sql, new { tel });
+
+                Console.WriteLine($"[GetUsuarioLogeado] tel normalizado = {tel}, usuarioId encontrado = {usuarioId}");
             }
 
-            var result = await _usuarioService.GetUsuario(UsuarioID);
-
-            if (_usuarioService.HasError == false)
+            // 2) Si NO encontró por teléfono, intentamos con el token
+            if (usuarioId == null)
             {
-                if (result == null)
+                var claimValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!string.IsNullOrEmpty(claimValue) &&
+                    long.TryParse(claimValue, out var idFromToken))
                 {
-                    return NotFound(GenericResponseDTO<string>.Fail("No se encontro usuario."));
+                    usuarioId = idFromToken;
+                    Console.WriteLine($"[GetUsuarioLogeado] usuarioId tomado del token = {usuarioId}");
                 }
-                return Ok(GenericResponseDTO<Usuario>.Ok(result, "Consulta exitosa"));
             }
-            else
+
+            // 3) Fallback temporal: si NO hay usuario y NO vino teléfono → usar 15319
+            if (usuarioId == null && string.IsNullOrWhiteSpace(tel))
             {
-                return BadRequest(GenericResponseDTO<string>.Fail(_usuarioService.LastError));
+                usuarioId = 15319;
+                Console.WriteLine("[GetUsuarioLogeado] usuarioId sigue NULL, usando default 15319 (TEMPORAL)");
             }
+
+            // 4) Si aún así no hay usuario → 404
+            if (usuarioId == null)
+            {
+                Console.WriteLine("[GetUsuarioLogeado] usuarioId sigue NULL → 404");
+                return NotFound(GenericResponseDTO<string>.Fail("No se encontró usuario."));
+            }
+
+            var result = await _usuarioService.GetUsuario(usuarioId.Value);
+            Console.WriteLine($"[GetUsuarioLogeado] _usuarioService.GetUsuario({usuarioId}) => {(result == null ? "NULL" : "OK")}");
+
+            if (_usuarioService.HasError)
+                return BadRequest(GenericResponseDTO<string>.Fail(_usuarioService.LastError));
+
+            if (result == null)
+                return NotFound(GenericResponseDTO<string>.Fail("No se encontró usuario."));
+
+            return Ok(GenericResponseDTO<Usuario>.Ok(result, "Consulta exitosa"));
         }
+
+
+
 
         [HttpPost("ActualizarUsuario")]
         [SwaggerResponse(200, "Objeto de respuesta", typeof(GenericResponseDTO<bool>))]

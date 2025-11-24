@@ -4,7 +4,6 @@ using EBRepositories;
 using EBRepositories.Interfaces;
 using EBServices.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.Linq.Dynamic.Core;
 using System.Transactions;
 
 namespace EBServices
